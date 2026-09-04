@@ -8,114 +8,7 @@ def create_data_split_indices(
         validation_start_date: str,
         test_start_date:       str,
 ) -> tuple[int, int, int]:
-    """
-    Create DataLoaders for chronological train, validation, and test periods.
 
-    Parameters
-    ----------
-    values:
-        The complete time series. Its expected shape is either [time] for a
-        univariate series or [time, features] for a multivariate series.
-
-    train_start:
-        The absolute index where the training period begins.
-
-    validation_start:
-        The absolute index where the validation period begins. This index also
-        marks the exclusive end of the training period.
-
-    test_start:
-        The absolute index where the test period begins. This index also marks
-        the exclusive end of the validation period.
-
-    input_length:
-        The number of historical observations included in each source sequence.
-
-    forecast_horizon:
-        The number of future observations included in each target sequence.
-
-    batch_size:
-        The number of sliding-window samples grouped into one batch.
-
-    seed:
-        The random seed used to reproduce the training-window shuffle order.
-
-    Notes
-    -----
-    A DataLoader receives one Dataset instance containing many samples. Each
-    sample returned by SlidingWindowDataset has the following structure:
-
-        dataset[j][0]: source sequence of the j-th sample
-        dataset[j][1]: target sequence of the j-th sample
-        dataset[j][2]: absolute index where the target sequence begins
-
-    The DataLoader repeatedly calls the Dataset's __getitem__ method and stacks
-    multiple samples into a batch. For example, if batch_size is 64, the batch
-    shapes are typically:
-
-        source batch:       [64, input_length, features]
-        target batch:       [64, forecast_horizon, features]
-        target-start batch: [64]
-
-    Setting shuffle=True randomly permutes the Dataset sample indices before
-    grouping them into batches. It changes both batch composition and batch
-    order, but it never changes the chronological order inside an individual
-    source or target sequence.
-
-    For example, Dataset indices:
-
-        [0, 1, 2, 3, 4, 5]
-
-    may be shuffled into:
-
-        [4, 1, 5, 0, 2, 3]
-
-    The individual time sequences stored at indices 4, 1, and so on remain
-    internally ordered. Only the order in which complete windows are presented
-    to the model changes.
-
-    Training data use shuffle=True because each sliding window is treated as an
-    independent supervised-learning sample. Validation and test data use
-    shuffle=False so predictions remain in chronological order.
-
-    DataLoader Usage
-    ----------------
-    Calling iter(loader) creates an iterator that tracks the current batch
-    position:
-
-        train_iterator = iter(train_loader)
-
-    Calling next(iterator) returns one batch and advances the iterator:
-
-        source_batch, target_batch, start_batch = next(train_iterator)
-
-    Calling next() again on the same iterator returns the following batch:
-
-        next_source, next_target, next_start = next(train_iterator)
-
-    When all batches have been returned, the iterator raises StopIteration.
-
-    A for-loop performs the iter() and next() operations automatically and is
-    the standard way to use a DataLoader during training:
-
-        for source_batch, target_batch, start_batch in train_loader:
-            ...
-
-    The expression next(iter(train_loader)) is useful for inspecting one batch.
-    However, calling it repeatedly creates a new iterator each time instead of
-    advancing through consecutive batches.
-
-    Returns
-    -------
-    train_loader:
-        A shuffled DataLoader containing training windows.
-
-    validation_loader:
-        A chronological DataLoader containing validation windows.
-
-    test_loader:
-        A chronological DataLoader containing test windows.
-    """
     dates = np.asarray(
         dates,
         dtype = "datetime64[ns]"
@@ -292,7 +185,115 @@ def create_data_loaders(
     DataLoader,
     DataLoader,
 ]:
+    """
+    Create DataLoaders for chronological train, validation, and test periods.
 
+    Parameters
+    ----------
+    values:
+        The complete time series. Its expected shape is either [time] for a
+        univariate series or [time, features] for a multivariate series.
+
+    train_start:
+        The absolute index where the training period begins.
+
+    validation_start:
+        The absolute index where the validation period begins. This index also
+        marks the exclusive end of the training period.
+
+    test_start:
+        The absolute index where the test period begins. This index also marks
+        the exclusive end of the validation period.
+
+    input_length:
+        The number of historical observations included in each source sequence.
+
+    forecast_horizon:
+        The number of future observations included in each target sequence.
+
+    batch_size:
+        The number of sliding-window samples grouped into one batch.
+
+    seed:
+        The random seed used to reproduce the training-window shuffle order.
+
+    Notes
+    -----
+    A DataLoader receives one Dataset instance containing many samples. Each
+    sample returned by SlidingWindowDataset has the following structure:
+
+        dataset[j][0]: source sequence of the j-th sample
+        dataset[j][1]: target sequence of the j-th sample
+        dataset[j][2]: absolute index where the target sequence begins
+
+    The DataLoader repeatedly calls the Dataset's __getitem__ method and stacks
+    multiple samples into a batch. For example, if batch_size is 64, the batch
+    shapes are typically:
+
+        source batch:       [64, input_length, features]
+        target batch:       [64, forecast_horizon, features]
+        target-start batch: [64]
+
+    Setting shuffle=True randomly permutes the Dataset sample indices before
+    grouping them into batches. It changes both batch composition and batch
+    order, but it never changes the chronological order inside an individual
+    source or target sequence.
+
+    For example, Dataset indices:
+
+        [0, 1, 2, 3, 4, 5]
+
+    may be shuffled into:
+
+        [4, 1, 5, 0, 2, 3]
+
+    The individual time sequences stored at indices 4, 1, and so on remain
+    internally ordered. Only the order in which complete windows are presented
+    to the model changes.
+
+    Training data use shuffle=True because each sliding window is treated as an
+    independent supervised-learning sample. Validation and test data use
+    shuffle=False so predictions remain in chronological order.
+
+    DataLoader Usage
+    ----------------
+    Calling iter(loader) creates an iterator that tracks the current batch
+    position:
+
+        train_iterator = iter(train_loader)
+
+    Calling next(iterator) returns one batch and advances the iterator:
+
+        source_batch, target_batch, start_batch = next(train_iterator)
+
+    Calling next() again on the same iterator returns the following batch:
+
+        next_source, next_target, next_start = next(train_iterator)
+
+    When all batches have been returned, the iterator raises StopIteration.
+
+    A for-loop performs the iter() and next() operations automatically and is
+    the standard way to use a DataLoader during training:
+
+        for source_batch, target_batch, start_batch in train_loader:
+            ...
+
+    The expression next(iter(train_loader)) is useful for inspecting one batch.
+    However, calling it repeatedly creates a new iterator each time instead of
+    advancing through consecutive batches.
+
+    Returns
+    -------
+    train_loader:
+        A shuffled DataLoader containing training windows.
+
+    validation_loader:
+        A chronological DataLoader containing validation windows.
+
+    test_loader:
+        A chronological DataLoader containing test windows.
+    """
+    
     train_dataset = SlidingWindowDataset(
         values             = values,
         first_target_index = train_start + input_length,
